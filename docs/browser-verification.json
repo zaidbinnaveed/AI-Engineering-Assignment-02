@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-21T15:50:40.859Z",
+  "checks": [
+    "54 stickers render",
+    "live SSE run: 3/3 verified",
+    "model response renders",
+    "replay reaches solved state",
+    "reset restores scramble",
+    "difficulty 4 and local mode: 2/2 verified",
+    "390px mobile: no horizontal overflow",
+    "no browser runtime exceptions"
+  ],
+  "screenshots": [
+    "dashboard-desktop.png",
+    "live-result-desktop.png",
+    "dashboard-mobile.png"
+  ]
+}

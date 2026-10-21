@@ -1,125 +1,104 @@
-# CubeLab — Rubik's Cube Spatial Reasoning Benchmark
+# CubeLab — Live Cube Reasoning Arena
 
-**AI Engineering — Assignment 02**  
-**Adaptation maintainer:** Zaid Bin Naveed  
-**Stack:** Python · FastAPI · Vanilla JavaScript · CSS  
-**Mode:** Offline deterministic evaluation (no live LLM integrations)
+AI Engineering · Assignment 02 · Zaid Bin Naveed
 
-> **Provenance and scope.** This is an **independently implemented, local-first baseline and UI package**.
+A small FastAPI + vanilla JavaScript assignment that scrambles a Rubik's cube, calls a **real free hosted LLM**, and checks its answer against the cube engine. Includes a responsive dashboard, streamed progress, verified move replay, JSON export, and two local reference algorithms.
 
-## Project overview
+## Run locally
 
-CubeLab studies search and action planning in the 3×3 Rubik's Cube state space. It visualizes a scrambled state, solves short scrambles using a bounded bidirectional breadth-first search baseline, and compares the solver against an inverse-scramble control. Every result is generated locally and reproducibly from the selected seed.
+**Open: http://127.0.0.1:8000** (or http://localhost:8000).
 
-### Implemented features
+On Windows, double-click `START_WINDOWS.bat`. It creates `.venv`, installs the small Python dependency set, and starts the server. Keep its terminal open; press Ctrl+C to stop. If already running, open the URL directly.
 
-- Responsive dark-theme dashboard with Rubik's Cube **2D unfolded facelet visualization**, scramble difficulty controls, seed selection, metric cards, and comparison table.
-- Genuine 54-facelet cube state representation, six faces, and all 18 face-turn notations (`U`, `U'`, `U2`, etc.).
-- Seeded random scrambling with consecutive same-face moves excluded.
-- Bidirectional BFS with a maximum search depth of 6 in the app; returns an explicit bounded failure when it cannot find a solution.
-- Deterministic inverse-scramble and bounded BFS comparison with success and optimality-gap metrics.
-- FastAPI endpoints for health, scrambling, solving, model/control metadata, synchronous race execution, and SSE event-stream execution.
-- Explicit guardrail rejecting requests for unavailable live model mode.
-- Automated tests and a small reproducible evaluation report.
-
-**Important limitation:** These are *algorithmic baselines*, not frontier LLMs. The browser displays an **unfolded cube net**, not a 3D animated cube. No claims are made about external model intelligence or live model latency.
-
-## Quick start — Windows
-
-1. Install Python 3.10+.
-2. Extract the project ZIP.
-3. Double-click **`START_WINDOWS.bat`**. It will create `.venv`, install dependencies, and launch the local server.
-4. Open **http://127.0.0.1:8000** in your browser.
-
-If the browser doesn't open automatically, use the URL manually. The URL is local to the computer running the server; it is **not** a hosted public site.
-
-### Manual start
+Manual setup (Python 3.10+):
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
 ```
 
-On macOS/Linux, activate with `source .venv/bin/activate`, then run the same pip and uvicorn commands.
+On macOS/Linux, replace `.venv\Scripts\python.exe` with `.venv/bin/python`.
 
-### Project links
+- Dashboard: http://localhost:8000
+- Interactive API: http://localhost:8000/docs
+- Server health: http://localhost:8000/api/health
 
-- Application: http://127.0.0.1:8000
-- Swagger API documentation: http://127.0.0.1:8000/docs
-- Health check: http://127.0.0.1:8000/api/health
+This URL runs on your computer. It is not a public deployment. No Node build, database, GPU, or API key is needed. Internet is required for the live LLM; local controls work without it.
 
-## Reproducible evaluation
+## Try a live simulation
 
-Run unit and API tests:
+1. Choose Warmup, Standard, or Challenge (3, 4, or 5 scramble moves).
+2. Set a seed, or leave it at `42`.
+3. Keep **Live LLM + controls** selected and click **Run benchmark**.
+4. Local reference results arrive first; the model row shows its actual waiting time.
+5. Inspect a result and click **Replay solution** to see each verified state transition. **Export JSON** saves the complete experiment, including the raw model answer and states.
 
-```bash
-python -m pytest backend/tests -v
-```
+The app uses the anonymous [Pollinations text API](https://text.pollinations.ai/models), model `openai-fast`, currently described by its live catalog as **GPT-OSS 20B**. It makes an actual server-side POST to `https://text.pollinations.ai/`; it does not use OpenAI's paid API. No credentials or billing setup are configured.
 
-Generate the benchmark report from actual local runs:
+The free service can change, cache responses, rate limit requests, or become unavailable. Requests time out after 75 seconds. Upstream errors and invalid outputs appear as failures; the app never substitutes a deterministic solution for an LLM response. Only one live inference runs at a time. Do not submit private data: the generated scramble and facelets are sent to Pollinations.
 
-```bash
-python evaluate.py
-```
+## What is being measured
 
-The evaluation uses fixed seed 42 at depths 3, 4, and 5. **Optimality gap** is defined as the number of moves in a successful candidate solution minus the bounded BFS solution length. It is only reported when both a candidate solution and a BFS solution exist.
+| Approach | Input | Execution |
+| --- | --- | --- |
+| GPT-OSS 20B | Scramble history + current facelets | Live hosted model request |
+| Inverse scramble | Scramble history | Deterministic correctness control |
+| Bidirectional BFS | Current facelets | Local bounded search |
 
-**Methodological caveat:** Inverse-scramble is given the generated scramble sequence and therefore is not a fair blind solver. It is useful for correctness and comparison, *not* for demonstrating AI reasoning.
+This is a **history-assisted planning task**, not a blind cube-solving intelligence benchmark. The prompt explains inverse turns but does not include a precomputed solution. The LLM produces its own move list. All returned moves must use the 18 standard Singmaster turns; the backend applies them and compares all 54 facelets with the solved cube.
 
-## Architecture
+BFS is limited to 6 moves and 120,000 explored nodes. A missing reference is a budget limit, not a proof of impossibility. Gap is solution length minus the reference length and is reported only for solved candidates with a reference. Times are measured locally: live latency includes the complete HTTP round trip and possible provider caching. This is a single-puzzle demonstration, not a statistical model ranking. The visualization is a 2D unfolded cube net with replay, not a 3D physics simulation.
 
-```text
-AI-Engineering-Assignment-02/
-├── backend/
-│   ├── app/
-│   │   ├── cube_engine.py       # Stickers, turns, scrambling, bounded BFS
-│   │   └── main.py              # FastAPI and SSE endpoints
-│   └── tests/
-│       └── test_engine.py       # Unit and API tests
-├── frontend/
-│   ├── index.html               # Responsive web dashboard
-│   └── static/
-│       ├── styles.css
-│       └── app.js
-├── docs/
-│   └── evaluation.md            # Generated local evaluation
-├── evaluate.py
-├── START_WINDOWS.bat
-├── requirements.txt
-├── .env.example
-└── README.md
-```
-
-### API
+## Backend and API
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET /` | Serves web application |
-| `GET /api/health` | Service health and declared simulation mode |
-| `GET /api/models` | Two deterministic control/baseline descriptions |
-| `POST /api/scramble` | Generate seeded scramble |
-| `POST /api/solve` | Attempt bounded BFS solution |
-| `POST /api/race/run` | Compare local controls |
-| `POST /api/race/stream` | Stream results via SSE |
+| `GET /api/health` | Local server health and enabled provider; does not probe upstream availability |
+| `GET /api/models` | Live model and local reference metadata |
+| `POST /api/scramble` | Seeded puzzle, with `depth` and `seed` |
+| `POST /api/solve` | Bounded search from a 54-character facelet state |
+| `POST /api/race/run` | Full result JSON; `mode` is `live` or `simulation` |
+| `POST /api/race/stream` | SSE `start`, `result`, `progress`, `complete`, and explicit error events |
 
-## Security and reproducibility
+Race request example:
 
-- No external API credentials are required or collected.
-- Browser output is generated with safe DOM text assignment; generated benchmark data isn't injected as HTML.
-- Input difficulty and seed are validated server-side.
-- Local server binds to `127.0.0.1` by default, not a public network interface.
-- No external AI API traffic or model billing occurs.
-- Google Fonts are optionally loaded for typography; without internet, the interface falls back to system fonts.
+```json
+{"depth":3,"seed":42,"mode":"live"}
+```
 
-## Verification status
+The UI explicitly selects live mode. For compatibility with the offline evaluation script, API requests that omit `mode` default to `simulation` (local controls only).
 
-The project test suite, endpoint smoke tests, and the evaluation script were executed in the provided environment. Actual report and result counts are in `docs/evaluation.md`. **Visual cross-browser testing and production deployment have not been performed.**
+Inputs are validated, bounded search runs off the async event loop, network calls have timeouts, and generated content is displayed using safe DOM text assignment. The server binds to loopback by default. The frontend uses system fonts and needs no external assets.
 
-## Credits
+## Verification
 
-- **Zaid Bin Naveed:** designated maintainer of this adaptation package; independently authored student contributions should be documented before representing them as his work.
-- **Independent implementation in this package:** self-contained cube engine, offline evaluation API, tests, and dashboard produced for this adaptation.
+```powershell
+python -m pytest backend/tests -q
+python evaluate.py
+```
 
-**License:** No license is asserted for the upstream repository. This package does not include a copy of its source code or its demo video. Review course requirements and any source permissions before reuse.
+The suite covers cube move inverses, solver correctness, seeded generation, API validation, live request/stream integration, model response parsing, engine verification, malformed output, and upstream HTTP failures. Provider boundary tests use controlled responses; a separate real-network smoke run is recorded in [docs/live-smoke.json](docs/live-smoke.json).
+
+Verified on 2026-10-21: **44 tests passed**. Real live smoke run, seed 42, depth 3: scramble `R U L2`; GPT-OSS returned `L2 U' R'`; engine verification passed; gap 0; measured request time about 13.1 seconds. This is one observed result, not a guarantee of future availability or accuracy.
+
+The headless browser check also passed: live SSE results rendered, replay reached solved, reset restored the scramble, local mode and difficulty controls worked, and the 390px mobile layout had no page overflow or browser runtime exceptions. See [browser verification](docs/browser-verification.json), [desktop screenshot](docs/live-result-desktop.png), and [mobile screenshot](docs/dashboard-mobile.png).
+
+`evaluate.py` writes [docs/evaluation.md](docs/evaluation.md) for **offline references only**. It intentionally does not consume free model requests.
+
+## Files
+
+```text
+backend/app/cube_engine.py    Cube state, turns, scrambling, bounded BFS
+backend/app/live_models.py    Hosted inference, parsing, verification
+backend/app/main.py           FastAPI, static files, SSE
+backend/tests/                Engine, API, provider boundary tests
+frontend/index.html          Dashboard
+frontend/static/app.js       Streaming, results, replay, export
+frontend/static/styles.css   Responsive interface
+START_WINDOWS.bat            Windows launcher
+```
+
+## Attribution
+
+This independently implemented adaptation is informed by Muhammad Abbas's [AI-Engineering-Assignment2](https://github.com/muhammad1234-max/AI-Engineering-Assignment2) project concept. It is not a clone of the original code; the original author's work and reported evaluations are not represented as Zaid's. Zaid Bin Naveed is the designated adaptation maintainer. The package contains its own cube engine, dashboard, local controls, and live integration. No license is asserted for the upstream project; follow your course's attribution and collaboration requirements.

@@ -1,0 +1,77 @@
+{
+  "mode": "live",
+  "seed": 42,
+  "scramble": [
+    "R",
+    "U",
+    "L2"
+  ],
+  "initial_state": "DUUDUUDFFUBBRRRRRRBRRBFDLFDUDBUDBFDBLLLLLLDFFLLFUBFUBR",
+  "baseline_depth": 3,
+  "results": [
+    {
+      "id": "gpt-oss",
+      "name": "GPT-OSS 20B",
+      "provider": "Pollinations",
+      "model": "openai-fast",
+      "kind": "live_llm",
+      "moves": [
+        "L2",
+        "U'",
+        "R'"
+      ],
+      "solved": true,
+      "optimality_gap": 0,
+      "status": "solved",
+      "raw_response": "{\"moves\":[\"L2\",\"U'\",\"R'\"]}",
+      "states": [
+        "DUUDUUDFFUBBRRRRRRBRRBFDLFDUDBUDBFDBLLLLLLDFFLLFUBFUBR",
+        "UUUUUUFFFUBBRRRRRRRRRFFDFFDDDBDDBDDBFFDLLLLLLLLLUBBUBB",
+        "UUFUUFUUFRRRRRRRRRFFDFFDFFDDDBDDBDDBLLLLLLLLLUBBUBBUBB",
+        "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
+      ],
+      "elapsed_ms": 13088.05
+    },
+    {
+      "id": "inverse",
+      "name": "Inverse scramble",
+      "moves": [
+        "L2",
+        "U'",
+        "R'"
+      ],
+      "states": [
+        "DUUDUUDFFUBBRRRRRRBRRBFDLFDUDBUDBFDBLLLLLLDFFLLFUBFUBR",
+        "UUUUUUFFFUBBRRRRRRRRRFFDFFDDDBDDBDDBFFDLLLLLLLLLUBBUBB",
+        "UUFUUFUUFRRRRRRRRRFFDFFDFFDDDBDDBDDBLLLLLLLLLUBBUBBUBB",
+        "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
+      ],
+      "solved": true,
+      "elapsed_ms": 0.0,
+      "optimality_gap": 0,
+      "kind": "baseline",
+      "status": "solved"
+    },
+    {
+      "id": "bfs",
+      "name": "Bidirectional BFS",
+      "moves": [
+        "L2",
+        "U'",
+        "R'"
+      ],
+      "states": [
+        "DUUDUUDFFUBBRRRRRRBRRBFDLFDUDBUDBFDBLLLLLLDFFLLFUBFUBR",
+        "UUUUUUFFFUBBRRRRRRRRRFFDFFDDDBDDBDDBFFDLLLLLLLLLUBBUBB",
+        "UUFUUFUUFRRRRRRRRRFFDFFDFFDDDBDDBDDBLLLLLLLLLUBBUBBUBB",
+        "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
+      ],
+      "solved": true,
+      "elapsed_ms": 1.2,
+      "optimality_gap": 0,
+      "kind": "baseline",
+      "status": "solved"
+    }
+  ],
+  "disclaimer": "History-assisted task: LLM and inverse control see the scramble. BFS uses facelets. This is not a blind spatial reasoning test."
+}
