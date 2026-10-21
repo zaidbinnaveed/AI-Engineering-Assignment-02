@@ -2,7 +2,7 @@
 
 AI Engineering · Assignment 02 · Zaid Bin Naveed
 
-A small FastAPI + vanilla JavaScript assignment that scrambles a Rubik's cube, calls a **real free hosted LLM**, and checks its answer against the cube engine. Includes a responsive dashboard, streamed progress, verified move replay, JSON export, and two local reference algorithms.
+A small FastAPI + vanilla JavaScript assignment that scrambles a Rubik's cube, calls a **real free hosted LLM**, and checks its answer against the cube engine. Includes a responsive dashboard, streamed progress, an interactive 3D Rubik cube with animated face-layer turns, JSON export, and two local reference algorithms.
 
 ## Run locally
 
@@ -32,7 +32,7 @@ This URL runs on your computer. It is not a public deployment. No Node build, da
 2. Set a seed, or leave it at `42`.
 3. Keep **Live LLM + controls** selected and click **Run benchmark**.
 4. Local reference results arrive first; the model row shows its actual waiting time.
-5. Inspect a result and click **Replay solution** to see each verified state transition. **Export JSON** saves the complete experiment, including the raw model answer and states.
+5. Watch the 3D cube solve automatically when the model answer arrives. Drag the cube to rotate your view; use Pause/Resume, animation speed, Reset, and Reset view to inspect the solve. Click **Replay solution** to play it again. **Export JSON** saves the complete experiment, including the raw model answer and states.
 
 The app uses the anonymous [Pollinations text API](https://text.pollinations.ai/models), model `openai-fast`, currently described by its live catalog as **GPT-OSS 20B**. It makes an actual server-side POST to `https://text.pollinations.ai/`; it does not use OpenAI's paid API. No credentials or billing setup are configured.
 
@@ -48,7 +48,7 @@ The free service can change, cache responses, rate limit requests, or become una
 
 This is a **history-assisted planning task**, not a blind cube-solving intelligence benchmark. The prompt explains inverse turns but does not include a precomputed solution. The LLM produces its own move list. All returned moves must use the 18 standard Singmaster turns; the backend applies them and compares all 54 facelets with the solved cube.
 
-BFS is limited to 6 moves and 120,000 explored nodes. A missing reference is a budget limit, not a proof of impossibility. Gap is solution length minus the reference length and is reported only for solved candidates with a reference. Times are measured locally: live latency includes the complete HTTP round trip and possible provider caching. This is a single-puzzle demonstration, not a statistical model ranking. The visualization is a 2D unfolded cube net with replay, not a 3D physics simulation.
+BFS is limited to 6 moves and 120,000 explored nodes. A missing reference is a budget limit, not a proof of impossibility. Gap is solution length minus the reference length and is reported only for solved candidates with a reference. Times are measured locally: live latency includes the complete HTTP round trip and possible provider caching. This is a single-puzzle demonstration, not a statistical model ranking. The visualization uses 26 individual 3D cubies and 54 colored stickers, with true face-layer rotations. All 18 turn directions match the backend geometry. A live answer begins playback as soon as its SSE result arrives; the cube waits for the model before moving. Animations use native CSS 3D and the Web Animations API, with no extra library or CDN. Reduced-motion preferences shorten each turn.
 
 ## Backend and API
 
@@ -82,7 +82,7 @@ The suite covers cube move inverses, solver correctness, seeded generation, API 
 
 Verified on 2026-10-21: **44 tests passed**. Real live smoke run, seed 42, depth 3: scramble `R U L2`; GPT-OSS returned `L2 U' R'`; engine verification passed; gap 0; measured request time about 13.1 seconds. This is one observed result, not a guarantee of future availability or accuracy.
 
-The headless browser check also passed: live SSE results rendered, replay reached solved, reset restored the scramble, local mode and difficulty controls worked, and the 390px mobile layout had no page overflow or browser runtime exceptions. See [browser verification](docs/browser-verification.json), [desktop screenshot](docs/live-result-desktop.png), and [mobile screenshot](docs/dashboard-mobile.png).
+The headless browser check also passed: all 18 3D rotations match independently generated Python move fixtures; live SSE results trigger automatic solving; each rotating layer contains 9 cubies; pause freezes the current turn and resume reaches solved; keyboard orbit and view reset work; both favicon routes load; and the 390px mobile layout has no page overflow or browser runtime exceptions. See [browser verification](docs/browser-verification.json), [desktop screenshot](docs/live-result-desktop.png), [paused 3D turn](docs/3d-turn-paused.png), and [mobile screenshot](docs/dashboard-mobile.png).
 
 `evaluate.py` writes [docs/evaluation.md](docs/evaluation.md) for **offline references only**. It intentionally does not consume free model requests.
 
@@ -94,7 +94,9 @@ backend/app/live_models.py    Hosted inference, parsing, verification
 backend/app/main.py           FastAPI, static files, SSE
 backend/tests/                Engine, API, provider boundary tests
 frontend/index.html          Dashboard
-frontend/static/app.js       Streaming, results, replay, export
+frontend/static/app.js       Streaming, automatic solving, playback, export
+frontend/static/cube3d.js    3D cubies, layer rotations, camera controls
+frontend/static/favicon.svg Cube favicon
 frontend/static/styles.css   Responsive interface
 START_WINDOWS.bat            Windows launcher
 ```

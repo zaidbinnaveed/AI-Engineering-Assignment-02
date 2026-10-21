@@ -32,6 +32,11 @@ class RaceRequest(ScrambleRequest):
 def home():
     return FileResponse(ROOT/'frontend/index.html')
 
+@app.get('/favicon.ico', include_in_schema=False)
+@app.get('/favicon.svg', include_in_schema=False)
+def favicon():
+    return FileResponse(ROOT/'frontend/static/favicon.svg', media_type='image/svg+xml')
+
 @app.get('/api/health')
 def health():
     return {'status':'ok', 'mode':'live', 'live_models_enabled':True,

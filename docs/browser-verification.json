@@ -1,18 +1,23 @@
 {
-  "date": "2026-10-21T15:50:40.859Z",
+  "date": "2026-10-21T15:59:08.611Z",
   "checks": [
-    "54 stickers render",
-    "live SSE run: 3/3 verified",
-    "model response renders",
-    "replay reaches solved state",
+    "26 3D cubies and 54 stickers render",
+    "all 18 CSS 3D turn rotations match Python engine",
+    "live SSE answer automatically starts 3D solving",
+    "face turns animate exactly 9 cubies",
+    "pause freezes current layer rotation; resume completes solve",
+    "3/3 verified; 3D final state matches solved facelets",
     "reset restores scramble",
-    "difficulty 4 and local mode: 2/2 verified",
+    "keyboard orbit and view reset work",
+    "favicon SVG and root icon routes return 200",
+    "local mode auto-solves difficulty 4",
     "390px mobile: no horizontal overflow",
     "no browser runtime exceptions"
   ],
   "screenshots": [
     "dashboard-desktop.png",
     "live-result-desktop.png",
+    "3d-turn-paused.png",
     "dashboard-mobile.png"
   ]
 }

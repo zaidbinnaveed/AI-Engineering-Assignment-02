@@ -1,23 +1,17 @@
-﻿'use strict';
+'use strict';
 const $ = id => document.getElementById(id);
 const SOLVED = [...'URFDLB'].map(f => f.repeat(9)).join('');
-const faceNames = {U:'Up', R:'Right', F:'Front', D:'Down', L:'Left', B:'Back'};
-let depth = 3, running = false, replayTimer = null, selected = null, latest = null, initialState = SOLVED;
+const cubeView = new CubeView($('cube'));
+let depth = 3, running = false, selected = null, latest = null, initialState = SOLVED;
+let replayRun = 0, replayIndex = 0, replayPlaying = false, replayPaused = false;
 let currentSettings = null, resultList = [], pendingModel = false, runStarted = 0, ticker = null;
-function renderCube(state) {
-  $('cube').replaceChildren();
-  for (const [index, face] of [...'URFDLB'].entries()) {
-    const element = document.createElement('div'); element.className = 'face'; element.dataset.face = face;
-    element.title = faceNames[face] + ' face';
-    for (const ch of state.slice(index*9, index*9+9)) {
-      const tile = document.createElement('span'); tile.className = 'tile '+ch; element.append(tile);
-    }
-    $('cube').append(element);
-  }
-  $('cube').setAttribute('aria-label', 'Unfolded cube. '+(state===SOLVED?'Solved.':'Scrambled.'));
+function updateCubeLabels(state) {
+  $('cube').setAttribute('aria-label', 'Interactive 3D Rubik cube. '+(state===SOLVED?'Solved.':'Scrambled.')+' Drag or use arrow keys to rotate.');
   $('state-id').textContent = state.slice(0,9)+'…'+state.slice(-9);
   $('state-label').textContent = state===SOLVED?'SOLVED':'SCRAMBLED';
 }
+function renderCube(state) { cubeView.setState(state); updateCubeLabels(state); }
+function hud(message, active=false) { $('turn-hud').textContent=message; $('turn-hud').classList.toggle('active',active); }
 function pills(container, moves) {
   container.replaceChildren();
   for (const move of moves) { const span=document.createElement('span'); span.className='move-pill'; span.textContent=move; container.append(span); }
@@ -33,12 +27,40 @@ function busy(value) {
   document.querySelectorAll('[data-depth], #seed, #mode, #scramble-btn, #run-btn').forEach(el=>el.disabled=value);
   $('run-btn').textContent=value?'Running…':'Run benchmark ↗';
 }
-function stopReplay() { clearInterval(replayTimer); replayTimer=null; $('replay-btn').textContent='▶ Replay solution'; }
+function stopReplay() {
+  replayRun++; replayPlaying=false; replayPaused=false; replayIndex=0; cubeView.cancel();
+  $('replay-btn').textContent='Replay solution';
+}
+async function playSolution() {
+  if(!selected?.moves.length)return;
+  stopReplay();const token=replayRun, result=selected;replayPlaying=true;
+  renderCube(result.states[0]);$('replay-btn').textContent='Pause';
+  for(let index=0;index<result.moves.length;index++){
+    if(token!==replayRun)return;
+    const turn=result.moves[index];
+    $('state-label').textContent='SOLVING';hud(`TURN ${index+1} / ${result.moves.length}   ${turn}`,true);
+    $('replay-step').textContent=`${result.name} · ${index+1} / ${result.moves.length} · ${turn}`;
+    [...$('solution-moves').children].forEach((element,i)=>element.classList.toggle('playing',i===index));
+    const turnFinished=cubeView.turn(turn,result.states[index+1],900);
+    cubeView.animation?.updatePlaybackRate(Number($('replay-speed').value));
+    const completed=await turnFinished;
+    if(!completed||token!==replayRun)return;
+    replayIndex=index+1;updateCubeLabels(result.states[replayIndex]);
+  }
+  replayPlaying=false;replayPaused=false;$('replay-btn').textContent='Replay solution';
+  hud(result.solved?'SOLVED · ALL 54 STICKERS VERIFIED':'SEQUENCE COMPLETE · NOT SOLVED',result.solved);
+  $('replay-step').textContent=`${result.name} · ${replayIndex} / ${result.moves.length} moves`;
+}
+function togglePlayback() {
+  if(replayPlaying){replayPlaying=false;replayPaused=true;cubeView.pause();$('replay-btn').textContent='Resume';$('state-label').textContent='PAUSED';hud('PAUSED · RESUME TO CONTINUE');}
+  else if(replayPaused){replayPaused=false;replayPlaying=true;cubeView.resume();$('replay-btn').textContent='Pause';$('state-label').textContent='SOLVING';hud('SOLVING · '+selected.moves[replayIndex],true);}
+  else void playSolution();
+}
 function clearResults() {
-  stopReplay(); latest=null; selected=null; resultList=[]; pendingModel=false;
+  stopReplay(); renderCube(initialState); latest=null; selected=null; resultList=[]; pendingModel=false;
   $('result-detail').hidden=true;
   $('replay-btn').disabled=true; $('reset-btn').disabled=true; $('download-btn').disabled=true;
-  $('replay-step').textContent='Run a benchmark to replay';
+  $('replay-step').textContent='Run a benchmark to solve';hud('READY TO SOLVE');
   for (const id of ['shortest','success','latency']) $(id).textContent='—';
   $('last-run').textContent='No experiment yet';
   $('results').replaceChildren();
@@ -66,7 +88,7 @@ function selectResult(result) {
   pills($('solution-moves'),result.moves);
   $('raw-response').textContent=result.error || result.raw_response || (result.moves.length?'Generated moves: '+result.moves.join(' '):'No solution found within the search budget.');
   $('replay-btn').disabled=!result.moves.length;$('reset-btn').disabled=false;
-  $('replay-step').textContent='0 / '+result.moves.length+' moves';renderCube(initialState);
+  $('replay-step').textContent='0 / '+result.moves.length+' moves';renderCube(initialState);hud(result.moves.length?'SOLUTION READY · '+result.name.toUpperCase():'NO VALID MOVES TO ANIMATE');
 }
 function drawResults() {
   $('results').replaceChildren();
@@ -87,23 +109,25 @@ function drawResults() {
   const live=resultList.find(x=>x.kind==='live_llm');$('latency').textContent=live?formatTime(live.elapsed_ms):pendingModel?'…':'—';
 }
 function handleEvent(type,data) {
-  if(type==='start'){initialState=data.initial_state;renderCube(initialState);pills($('scramble-moves'),data.scramble);}
-  if(type==='result'){resultList.push(data);if(data.kind==='live_llm')pendingModel=false;drawResults();}
+  if(type==='start'){initialState=data.initial_state;renderCube(initialState);pills($('scramble-moves'),data.scramble);if(data.mode==='live'){$('state-label').textContent='THINKING';hud('WAITING FOR LIVE MODEL MOVES');}}
+  if(type==='result'){resultList.push(data);if(data.kind==='live_llm'){pendingModel=false;selectResult(data);if(data.moves.length)void playSolution();}drawResults();}
   if(type==='error')throw Error(data.message);
   if(type==='complete'){
     pendingModel=false;latest=data;resultList=data.results;drawResults();
     $('shortest').textContent=data.baseline_depth??'N/A';$('last-run').textContent='Seed '+currentSettings.seed+' · '+depth+' scramble moves';
     $('download-btn').disabled=false;
-    const live=data.results.find(x=>x.kind==='live_llm');selectResult(live||data.results.find(x=>x.solved)||data.results[0]);
+    const live=data.results.find(x=>x.kind==='live_llm');
+    const candidate=live||data.results.find(x=>x.id==='bfs'&&x.solved)||data.results[0];
+    if(selected?.id!==candidate.id){selectResult(candidate);if(candidate.moves.length)void playSolution();}
     if(live?.error) feedback(live.error+' Local controls are available below.','error');
-    else feedback(live?(live.solved?'Live answer received and verified. Replay the model’s solution below.':'Live answer received. The engine found that it does not solve this cube.'):'Local controls completed. Choose Live LLM to call the model.');
+    else feedback(live?(live.solved?'Live answer verified. The 3D cube is playing the model moves automatically.':'Live answer received. The engine found that it does not solve this cube.'):'Local controls completed. Choose Live LLM to call the model.');
   }
 }
 async function run() {
   if(running)return;
   try{currentSettings=settings();}catch(error){feedback(error.message,'error');return;}
   clearResults();busy(true);pendingModel=currentSettings.mode==='live';drawResults();
-  runStarted=Date.now();feedback(pendingModel?'Calling GPT-OSS 20B. Free inference can take up to 75 seconds.':'Running local search…','running');
+  runStarted=Date.now();if(pendingModel){$('state-label').textContent='THINKING';hud('WAITING FOR LIVE MODEL MOVES');}feedback(pendingModel?'Calling GPT-OSS 20B. Free inference can take up to 75 seconds.':'Running local search…','running');
   ticker=setInterval(()=>{if(pendingModel)feedback('GPT-OSS 20B is generating · '+Math.floor((Date.now()-runStarted)/1000)+'s elapsed','running');},1000);
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),100000);
   try{
@@ -117,13 +141,10 @@ async function run() {
   }catch(error){pendingModel=false;drawResults();feedback(error.name==='AbortError'?'Benchmark timed out. Please retry.':error.message,'error');}
   finally{clearInterval(ticker);clearTimeout(timeout);busy(false);}
 }
-$('replay-btn').addEventListener('click',()=>{
-  if(replayTimer){stopReplay();return;}
-  if(!selected?.moves.length)return;
-  renderCube(initialState);let index=0;$('replay-btn').textContent='Ⅱ Pause replay';
-  replayTimer=setInterval(()=>{index++;renderCube(selected.states[index]);$('replay-step').textContent=index+' / '+selected.moves.length+' · '+selected.moves[index-1];$('state-label').textContent=selected.states[index]===SOLVED?'SOLVED':'REPLAYING';[...$('solution-moves').children].forEach((el,i)=>el.classList.toggle('playing',i===index-1));if(index>=selected.moves.length)stopReplay();},650);
-});
-$('reset-btn').addEventListener('click',()=>{stopReplay();renderCube(initialState);$('replay-step').textContent='0 / '+selected.moves.length+' moves';[...$('solution-moves').children].forEach(el=>el.classList.remove('playing'));});
+$('replay-btn').addEventListener('click',togglePlayback);
+$('view-reset-btn').addEventListener('click',()=>cubeView.resetCamera());
+$('reset-btn').addEventListener('click',()=>{stopReplay();renderCube(initialState);hud('SCRAMBLED · READY TO REPLAY');$('replay-step').textContent='0 / '+selected.moves.length+' moves';[...$('solution-moves').children].forEach(element=>element.classList.remove('playing'));});
+$('replay-speed').addEventListener('change',()=>{if(cubeView.animation)cubeView.animation.updatePlaybackRate(Number($('replay-speed').value));});
 $('download-btn').addEventListener('click',()=>{if(!latest)return;const url=URL.createObjectURL(new Blob([JSON.stringify(latest,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='cubelab-seed-'+latest.seed+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
 document.querySelectorAll('[data-depth]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-depth]').forEach(el=>{const active=el===button;el.classList.toggle('selected',active);el.setAttribute('aria-pressed',String(active));});depth=Number(button.dataset.depth);newScramble();}));
 $('seed').addEventListener('change',newScramble);
