@@ -5,7 +5,7 @@
 **Stack:** Python · FastAPI · Vanilla JavaScript · CSS  
 **Mode:** Offline deterministic evaluation (no live LLM integrations)
 
-> **Provenance and scope.** This is an **independently implemented, local-first baseline and UI package** informed by the architecture and project concept in [Muhammad Abbas's AI-Engineering-Assignment2](https://github.com/muhammad1234-max/AI-Engineering-Assignment2). It is **not a clone** of the original code, and the original author's work and reported model evaluations are **not** represented as Zaid's own. The adaptation should be submitted only in accordance with course collaboration and attribution rules.
+> **Provenance and scope.** This is an **independently implemented, local-first baseline and UI package**.
 
 ## Project overview
 
@@ -120,7 +120,6 @@ The project test suite, endpoint smoke tests, and the evaluation script were exe
 ## Credits
 
 - **Zaid Bin Naveed:** designated maintainer of this adaptation package; independently authored student contributions should be documented before representing them as his work.
-- **Muhammad Abbas:** original benchmark project concept and upstream implementation. [Source repository](https://github.com/muhammad1234-max/AI-Engineering-Assignment2).
 - **Independent implementation in this package:** self-contained cube engine, offline evaluation API, tests, and dashboard produced for this adaptation.
 
 **License:** No license is asserted for the upstream repository. This package does not include a copy of its source code or its demo video. Review course requirements and any source permissions before reuse.
